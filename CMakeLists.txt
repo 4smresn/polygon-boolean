@@ -18,6 +18,8 @@ add_executable(PolygonViewer
     polygon.h
     renderwidget.cpp
     renderwidget.h
+    booleanopsdialog.cpp
+    booleanopsdialog.h
 )
 
 target_link_libraries(PolygonViewer

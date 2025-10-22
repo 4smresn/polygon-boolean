@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QDir>
 #include <QCheckBox>
+#include "booleanopsdialog.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -58,6 +59,10 @@ void MainWindow::setupUI()
     QPushButton* clearButton = new QPushButton("清空所有模型");
     connect(clearButton, &QPushButton::clicked, this, &MainWindow::clearAllModels);
     leftLayout->addWidget(clearButton);
+    
+    QPushButton* booleanButton = new QPushButton("布尔操作");
+    connect(booleanButton, &QPushButton::clicked, this, &MainWindow::performBooleanOperation);
+    leftLayout->addWidget(booleanButton);
     
     leftPanel->setMaximumWidth(250);
     mainLayout->addWidget(leftPanel);
@@ -216,4 +221,38 @@ void MainWindow::onItemSelectionChanged()
     
     // 更新渲染
     updateRenderWidget();
+}
+
+void MainWindow::performBooleanOperation()
+{
+    // 检查是否至少有两个模型
+    if (m_polygons.size() < 2) {
+        QMessageBox::warning(this, "警告", 
+            "至少需要两个模型才能执行布尔操作！");
+        return;
+    }
+    
+    // 显示布尔操作对话框
+    BooleanOpsDialog dialog(m_polygons, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        // 获取用户选择
+        int firstIdx = dialog.getFirstOperandIndex();
+        int operationType = dialog.getOperationType();
+        int secondIdx = dialog.getSecondOperandIndex();
+        
+        // 检查是否选择了相同的模型
+        if (firstIdx == secondIdx) {
+            QMessageBox::warning(this, "警告", 
+                "不能对同一个模型执行布尔操作！");
+            return;
+        }
+        
+        // 显示选择的操作（暂时不执行实际的布尔运算）
+        QString opName;
+        switch (operationType) {
+            case 0: opName = "并集"; break;
+            case 1: opName = "交集"; break;
+            case 2: opName = "差集"; break;
+        }
+    }
 }

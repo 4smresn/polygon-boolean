@@ -21,6 +21,7 @@ private slots:
     void onToggleAllChanged(int state);
     void clearAllModels();
     void onItemSelectionChanged();
+    void performBooleanOperation();
     
 private:
     void setupUI();
