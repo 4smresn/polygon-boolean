@@ -20,7 +20,10 @@ MainWindow::MainWindow(QWidget* parent)
 {
     setupUI();
     setWindowTitle("Polygon Viewer");
-    resize(1000, 700);
+    
+    // 设置窗口大小
+    resize(1600, 1000);
+    setMinimumSize(1200, 800);
 }
 
 MainWindow::~MainWindow()
@@ -55,18 +58,21 @@ void MainWindow::setupUI()
     leftLayout->addWidget(m_toggleAllCheckbox);
     
     QPushButton* loadButton = new QPushButton("Load Polygon Files");
+    loadButton->setMinimumHeight(45);  // 设置按钮高度
     connect(loadButton, &QPushButton::clicked, this, &MainWindow::loadPolygonFiles);
     leftLayout->addWidget(loadButton);
     
     QPushButton* clearButton = new QPushButton("Clear All Models");
+    clearButton->setMinimumHeight(45);  // 设置按钮高度
     connect(clearButton, &QPushButton::clicked, this, &MainWindow::clearAllModels);
     leftLayout->addWidget(clearButton);
     
     QPushButton* booleanButton = new QPushButton("Boolean Operations");
+    booleanButton->setMinimumHeight(45);  // 设置按钮高度
     connect(booleanButton, &QPushButton::clicked, this, &MainWindow::performBooleanOperation);
     leftLayout->addWidget(booleanButton);
     
-    leftPanel->setMaximumWidth(250);
+    leftPanel->setMaximumWidth(300);  // 从 250 增加到 300
     mainLayout->addWidget(leftPanel);
     
     // 右侧渲染区域
@@ -267,6 +273,7 @@ void MainWindow::performBooleanOperation()
         int firstIdx = dialog.getFirstOperandIndex();
         int operationType = dialog.getOperationType();
         int secondIdx = dialog.getSecondOperandIndex();
+        BooleanOps::Tolerance tolerance = dialog.getTolerance();
         
         // Check if the same model was selected
         if (firstIdx == secondIdx) {
@@ -303,8 +310,8 @@ void MainWindow::performBooleanOperation()
                 return;
         }
         
-        // Perform boolean operation
-        std::vector<BooleanOps::PolygonData> results = BooleanOps::performOperation(poly1, poly2, op);
+        // Perform boolean operation with user-specified tolerance
+        std::vector<BooleanOps::PolygonData> results = BooleanOps::performOperation(poly1, poly2, op, tolerance);
         
         if (results.empty()) {
             QMessageBox::information(this, "Result", 

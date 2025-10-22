@@ -4,6 +4,8 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QDialogButtonBox>
+#include <QGroupBox>
+#include <QFormLayout>
 
 BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* parent)
     : QDialog(parent)
@@ -21,7 +23,7 @@ BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* p
     
     mainLayout->addSpacing(10);
     
-    // Horizontal layout: three lists side by side
+    // ========== Boolean Operation Selection ==========
     QHBoxLayout* combosLayout = new QHBoxLayout();
     
     // First operand
@@ -68,7 +70,22 @@ BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* p
     combosLayout->addLayout(secondLayout);
     
     mainLayout->addLayout(combosLayout);
-    mainLayout->addSpacing(20);
+    mainLayout->addSpacing(15);
+    
+    // ========== Tolerance Settings ==========
+    QGroupBox* toleranceGroup = new QGroupBox("Tolerance Settings");
+    QFormLayout* toleranceLayout = new QFormLayout(toleranceGroup);
+    
+    // Precision spinbox
+    m_precisionSpinBox = new QSpinBox();
+    m_precisionSpinBox->setMinimum(0);
+    m_precisionSpinBox->setMaximum(15);
+    m_precisionSpinBox->setValue(6);
+    m_precisionSpinBox->setToolTip("Decimal precision (6 = 0.000001 accuracy)");
+    toleranceLayout->addRow("Precision (decimal places):", m_precisionSpinBox);
+    
+    mainLayout->addWidget(toleranceGroup);
+    mainLayout->addSpacing(10);
     
     // Buttons
     QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -80,8 +97,8 @@ BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* p
     mainLayout->addWidget(buttonBox);
     
     // Set window size
-    setMinimumWidth(500);
-    resize(600, 200);
+    setMinimumWidth(600);
+    resize(700, 350);
 }
 
 int BooleanOpsDialog::getFirstOperandIndex() const
@@ -97,4 +114,13 @@ int BooleanOpsDialog::getOperationType() const
 int BooleanOpsDialog::getSecondOperandIndex() const
 {
     return m_secondOperandCombo->currentIndex();
+}
+
+BooleanOps::Tolerance BooleanOpsDialog::getTolerance() const
+{
+    BooleanOps::Tolerance tol;
+    tol.precision = m_precisionSpinBox->value();
+    tol.pointMergeTolerance = std::pow(10.0, -tol.precision);
+    tol.minSegmentLength = std::pow(10.0, -tol.precision);
+    return tol;
 }
