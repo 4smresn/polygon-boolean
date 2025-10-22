@@ -4,6 +4,8 @@
 #include <QBrush>
 #include <QPolygonF>
 #include <QPainterPath>
+#include <QResizeEvent>
+#include <limits>
 
 RenderWidget::RenderWidget(QWidget* parent)
     : QWidget(parent)
@@ -15,7 +17,29 @@ RenderWidget::RenderWidget(QWidget* parent)
 void RenderWidget::setPolygons(const QVector<Polygon*>& polygons)
 {
     m_polygons = polygons;
+    m_boundsNeedsUpdate = true;
+    
+    // Only recalculate bounds and transform when loading new files
+    m_cachedBounds = calculateBounds();
+    m_cachedTransform = calculateTransform(m_cachedBounds);
+    
     update();
+}
+
+void RenderWidget::updatePolygonsVisibility(const QVector<Polygon*>& polygons)
+{
+    m_polygons = polygons;
+    // Do NOT recalculate bounds and transform, just update visibility
+    update();
+}
+
+void RenderWidget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    // Recalculate transform when window is resized
+    if (!m_cachedBounds.isEmpty()) {
+        m_cachedTransform = calculateTransform(m_cachedBounds);
+    }
 }
 
 void RenderWidget::paintEvent(QPaintEvent* event)
@@ -29,29 +53,39 @@ void RenderWidget::paintEvent(QPaintEvent* event)
         return;
     }
     
-    // 计算所有多边形的边界
-    QRectF bounds = calculateBounds();
-    if (bounds.isEmpty()) {
+    if (m_cachedBounds.isEmpty()) {
         return;
     }
     
-    // 计算缩放和平移以适应窗口
-    double margin = 50.0;
-    double scaleX = (width() - 2 * margin) / bounds.width();
-    double scaleY = (height() - 2 * margin) / bounds.height();
-    double scale = qMin(scaleX, scaleY);
+    // Apply cached transformation
+    painter.setTransform(m_cachedTransform);
     
-    // 设置变换
-    painter.translate(width() / 2.0, height() / 2.0);
-    painter.scale(scale, -scale);  // Y轴翻转，使其向上为正
-    painter.translate(-bounds.center().x(), -bounds.center().y());
-    
-    // 绘制所有多边形
+    // Draw all polygons
     for (const Polygon* polygon : m_polygons) {
         if (polygon && polygon->isValid()) {
             drawPolygon(painter, polygon);
         }
     }
+}
+
+QTransform RenderWidget::calculateTransform(const QRectF& bounds) const
+{
+    if (bounds.isEmpty()) {
+        return QTransform();
+    }
+    
+    // Calculate scale to fit the window
+    double margin = 50.0;
+    double scaleX = (width() - 2 * margin) / bounds.width();
+    double scaleY = (height() - 2 * margin) / bounds.height();
+    double scale = qMin(scaleX, scaleY);
+    
+    QTransform transform;
+    transform.translate(width() / 2.0, height() / 2.0);
+    transform.scale(scale, -scale);  // Y-axis inverted, positive upwards
+    transform.translate(-bounds.center().x(), -bounds.center().y());
+    
+    return transform;
 }
 
 void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
@@ -61,10 +95,10 @@ void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
         return;
     }
     
-    // 使用 QPainterPath 来支持带孔多边形
+    // Use QPainterPath to support polygons with holes
     QPainterPath path;
     
-    // 第一个循环是外轮廓（逆时针）
+    // First loop is the outer contour (counter-clockwise)
     const QVector<QPointF>& outerLoop = loops[0];
     if (!outerLoop.isEmpty()) {
         path.moveTo(outerLoop[0]);
@@ -74,7 +108,7 @@ void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
         path.closeSubpath();
     }
     
-    // 其余循环是孔洞（顺时针）
+    // Remaining loops are holes (clockwise)
     for (int loopIdx = 1; loopIdx < loops.size(); ++loopIdx) {
         const QVector<QPointF>& hole = loops[loopIdx];
         if (hole.size() >= 3) {
@@ -86,30 +120,30 @@ void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
         }
     }
     
-    // 根据是否高亮设置不同的颜色
+    // Set different colors based on highlight state
     if (polygon->isHighlighted()) {
-        // 高亮状态：橙色边缘，黄色填充
-        QPen pen(QColor(255, 140, 0));  // 橙色边缘线
-        pen.setWidth(5);  // 更粗的边缘线
+        // Highlight state: orange edge, yellow fill
+        QPen pen(QColor(255, 140, 0));  // Orange edge
+        pen.setWidth(5);  // Thicker edge
         pen.setCosmetic(true);
         pen.setJoinStyle(Qt::RoundJoin);
         painter.setPen(pen);
         
-        QBrush brush(QColor(255, 215, 0, 200));  // 金黄色填充
+        QBrush brush(QColor(255, 215, 0, 200));  // Gold fill
         painter.setBrush(brush);
     } else {
-        // 普通状态：蓝色边缘，淡蓝色填充
-        QPen pen(QColor(0, 80, 200));  // 深蓝色边缘线
-        pen.setWidth(3);  // 加粗边缘线
+        // Normal state: blue edge, light blue fill
+        QPen pen(QColor(0, 80, 200));  // Dark blue edge
+        pen.setWidth(3);  // Thicker edge
         pen.setCosmetic(true);
         pen.setJoinStyle(Qt::RoundJoin);
         painter.setPen(pen);
         
-        QBrush brush(QColor(173, 216, 255, 180));  // 淡蓝色填充，带透明度
+        QBrush brush(QColor(173, 216, 255, 180));  // Light blue fill with transparency
         painter.setBrush(brush);
     }
     
-    // 绘制带孔的多边形
+    // Draw polygon with holes
     painter.drawPath(path);
 }
 
@@ -129,7 +163,7 @@ QRectF RenderWidget::calculateBounds() const
             continue;
         }
         
-        // 遍历所有循环的所有点
+        // Traverse all points in all loops
         for (const QVector<QPointF>& loop : polygon->getLoops()) {
             for (const QPointF& point : loop) {
                 minX = qMin(minX, point.x());

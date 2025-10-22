@@ -8,25 +8,25 @@
 BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* parent)
     : QDialog(parent)
 {
-    setWindowTitle("布尔操作");
+    setWindowTitle("Boolean Operations");
     setModal(true);
     
-    // 主布局
+    // Main layout
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     
-    // 标题
-    QLabel* titleLabel = new QLabel("请选择布尔操作参数：");
+    // Title
+    QLabel* titleLabel = new QLabel("Select Boolean Operation Parameters:");
     titleLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
     mainLayout->addWidget(titleLabel);
     
     mainLayout->addSpacing(10);
     
-    // 水平布局：三个列表并排
+    // Horizontal layout: three lists side by side
     QHBoxLayout* combosLayout = new QHBoxLayout();
     
-    // 第一操作数
+    // First operand
     QVBoxLayout* firstLayout = new QVBoxLayout();
-    QLabel* firstLabel = new QLabel("第一操作数");
+    QLabel* firstLabel = new QLabel("First Operand");
     firstLabel->setAlignment(Qt::AlignCenter);
     firstLayout->addWidget(firstLabel);
     
@@ -37,22 +37,22 @@ BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* p
     firstLayout->addWidget(m_firstOperandCombo);
     combosLayout->addLayout(firstLayout);
     
-    // 操作类型
+    // Operation type
     QVBoxLayout* operationLayout = new QVBoxLayout();
-    QLabel* operationLabel = new QLabel("操作类型");
+    QLabel* operationLabel = new QLabel("Operation Type");
     operationLabel->setAlignment(Qt::AlignCenter);
     operationLayout->addWidget(operationLabel);
     
     m_operationTypeCombo = new QComboBox();
-    m_operationTypeCombo->addItem("并集 (∪)", 0);
-    m_operationTypeCombo->addItem("交集 (∩)", 1);
-    m_operationTypeCombo->addItem("差集 (−)", 2);
+    m_operationTypeCombo->addItem("Union (∪)", 0);
+    m_operationTypeCombo->addItem("Intersection (∩)", 1);
+    m_operationTypeCombo->addItem("Difference (−)", 2);
     operationLayout->addWidget(m_operationTypeCombo);
     combosLayout->addLayout(operationLayout);
     
-    // 第二操作数
+    // Second operand
     QVBoxLayout* secondLayout = new QVBoxLayout();
-    QLabel* secondLabel = new QLabel("第二操作数");
+    QLabel* secondLabel = new QLabel("Second Operand");
     secondLabel->setAlignment(Qt::AlignCenter);
     secondLayout->addWidget(secondLabel);
     
@@ -60,7 +60,7 @@ BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* p
     for (const Polygon* polygon : polygons) {
         m_secondOperandCombo->addItem(polygon->getName());
     }
-    // 默认选择第二个模型（如果存在）
+    // Default to selecting second model (if it exists)
     if (polygons.size() > 1) {
         m_secondOperandCombo->setCurrentIndex(1);
     }
@@ -70,16 +70,16 @@ BooleanOpsDialog::BooleanOpsDialog(const QVector<Polygon*>& polygons, QWidget* p
     mainLayout->addLayout(combosLayout);
     mainLayout->addSpacing(20);
     
-    // 按钮
+    // Buttons
     QDialogButtonBox* buttonBox = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttonBox->button(QDialogButtonBox::Ok)->setText("确定");
-    buttonBox->button(QDialogButtonBox::Cancel)->setText("取消");
+    buttonBox->button(QDialogButtonBox::Ok)->setText("OK");
+    buttonBox->button(QDialogButtonBox::Cancel)->setText("Cancel");
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     mainLayout->addWidget(buttonBox);
     
-    // 设置窗口大小
+    // Set window size
     setMinimumWidth(500);
     resize(600, 200);
 }

@@ -19,7 +19,7 @@ MainWindow::MainWindow(QWidget* parent)
     , m_toggleAllCheckbox(nullptr)
 {
     setupUI();
-    setWindowTitle("多边形查看器");
+    setWindowTitle("Polygon Viewer");
     resize(1000, 700);
 }
 
@@ -39,7 +39,7 @@ void MainWindow::setupUI()
     QWidget* leftPanel = new QWidget();
     QVBoxLayout* leftLayout = new QVBoxLayout(leftPanel);
     
-    QLabel* label = new QLabel("模型列表:");
+    QLabel* label = new QLabel("Model List:");
     leftLayout->addWidget(label);
     
     m_listWidget = new QListWidget();
@@ -47,22 +47,22 @@ void MainWindow::setupUI()
     connect(m_listWidget, &QListWidget::itemSelectionChanged, this, &MainWindow::onItemSelectionChanged);
     leftLayout->addWidget(m_listWidget);
     
-    // 全选/全不选复选框
-    m_toggleAllCheckbox = new QCheckBox("显示/隐藏全部");
+    // Toggle all checkbox
+    m_toggleAllCheckbox = new QCheckBox("Show/Hide All");
     m_toggleAllCheckbox->setTristate(true);
     m_toggleAllCheckbox->setCheckState(Qt::Checked);
     connect(m_toggleAllCheckbox, &QCheckBox::stateChanged, this, &MainWindow::onToggleAllChanged);
     leftLayout->addWidget(m_toggleAllCheckbox);
     
-    QPushButton* loadButton = new QPushButton("加载点集文件");
+    QPushButton* loadButton = new QPushButton("Load Polygon Files");
     connect(loadButton, &QPushButton::clicked, this, &MainWindow::loadPolygonFiles);
     leftLayout->addWidget(loadButton);
     
-    QPushButton* clearButton = new QPushButton("清空所有模型");
+    QPushButton* clearButton = new QPushButton("Clear All Models");
     connect(clearButton, &QPushButton::clicked, this, &MainWindow::clearAllModels);
     leftLayout->addWidget(clearButton);
     
-    QPushButton* booleanButton = new QPushButton("布尔操作");
+    QPushButton* booleanButton = new QPushButton("Boolean Operations");
     connect(booleanButton, &QPushButton::clicked, this, &MainWindow::performBooleanOperation);
     leftLayout->addWidget(booleanButton);
     
@@ -76,12 +76,12 @@ void MainWindow::setupUI()
 
 void MainWindow::loadPolygonFiles()
 {
-    // 打开文件选择对话框
+    // Open file selection dialog
     QStringList filePaths = QFileDialog::getOpenFileNames(
         this,
-        "选择点集文件",
+        "Select Polygon Files",
         QDir::currentPath(),
-        "点集文件 (*.txt);;所有文件 (*.*)"
+        "Polygon Files (*.txt);;All Files (*.*)"
     );
     
     if (filePaths.isEmpty()) {
@@ -109,8 +109,8 @@ void MainWindow::loadPolygonFiles()
         }
         
         if (alreadyLoaded) {
-            QMessageBox::information(this, "提示", 
-                QString("文件 %1 已经加载过了，跳过。").arg(filename));
+            QMessageBox::information(this, "Info", 
+                QString("File %1 has already been loaded, skipping.").arg(filename));
             continue;
         }
         
@@ -128,13 +128,20 @@ void MainWindow::loadPolygonFiles()
         } else {
             delete polygon;
             failedCount++;
-            QMessageBox::warning(this, "错误", 
-                QString("无法加载文件: %1").arg(filename));
+            QMessageBox::warning(this, "Error", 
+                QString("Failed to load file: %1").arg(filename));
         }
     }
     
-    // 更新渲染
-    updateRenderWidget();
+    // Update rendering - use setPolygons to center all polygons
+    QVector<Polygon*> visiblePolygons;
+    for (int i = 0; i < m_listWidget->count() && i < m_polygons.size(); ++i) {
+        QListWidgetItem* item = m_listWidget->item(i);
+        if (item->checkState() == Qt::Checked) {
+            visiblePolygons.append(m_polygons[i]);
+        }
+    }
+    m_renderWidget->setPolygons(visiblePolygons);
     updateToggleAllCheckbox();
 }
 
@@ -150,7 +157,7 @@ void MainWindow::clearAllModels()
 {
     clearPolygons();
     m_listWidget->clear();
-    updateRenderWidget();
+    m_renderWidget->setPolygons(QVector<Polygon*>());  // Clear with setPolygons
     updateToggleAllCheckbox();
 }
 
@@ -191,7 +198,8 @@ void MainWindow::updateRenderWidget()
         }
     }
     
-    m_renderWidget->setPolygons(visiblePolygons);
+    // Only update visibility, do not recalculate centering
+    m_renderWidget->updatePolygonsVisibility(visiblePolygons);
 }
 
 void MainWindow::updateToggleAllCheckbox()
@@ -208,7 +216,7 @@ void MainWindow::updateToggleAllCheckbox()
         }
     }
     
-    // 阻止信号，避免触发 onToggleAllChanged
+    // Prevent signals to avoid recursive triggering
     m_toggleAllCheckbox->blockSignals(true);
     
     if (checkedCount == 0) {
@@ -224,12 +232,12 @@ void MainWindow::updateToggleAllCheckbox()
 
 void MainWindow::onItemSelectionChanged()
 {
-    // 清除所有模型的高亮状态
+    // Clear highlight state for all polygons
     for (Polygon* polygon : m_polygons) {
         polygon->setHighlighted(false);
     }
     
-    // 设置选中模型的高亮状态
+    // Set highlight state for selected polygons
     QList<QListWidgetItem*> selectedItems = m_listWidget->selectedItems();
     for (QListWidgetItem* item : selectedItems) {
         int row = m_listWidget->row(item);
@@ -238,79 +246,79 @@ void MainWindow::onItemSelectionChanged()
         }
     }
     
-    // 更新渲染
+    // Update rendering
     updateRenderWidget();
 }
 
-// 修改 performBooleanOperation 函数以处理多个结果
+// Handle multiple results from boolean operations
 
 void MainWindow::performBooleanOperation()
 {
     if (m_polygons.size() < 2) {
-        QMessageBox::warning(this, "警告", 
-            "至少需要两个模型才能执行布尔操作！");
+        QMessageBox::warning(this, "Warning", 
+            "At least two models are required to perform boolean operations!");
         return;
     }
     
-    // 显示布尔操作对话框
+    // Show boolean operations dialog
     BooleanOpsDialog dialog(m_polygons, this);
     if (dialog.exec() == QDialog::Accepted) {
-        // 获取用户选择
+        // Get user selection
         int firstIdx = dialog.getFirstOperandIndex();
         int operationType = dialog.getOperationType();
         int secondIdx = dialog.getSecondOperandIndex();
         
-        // 检查是否选择了相同的模型
+        // Check if the same model was selected
         if (firstIdx == secondIdx) {
-            QMessageBox::warning(this, "警告", 
-                "不能对同一个模型执行布尔操作！");
+            QMessageBox::warning(this, "Warning", 
+                "Cannot perform boolean operations on the same model!");
             return;
         }
         
-        // 转换为标准库格式
+        // Convert to standard library format
         BooleanOps::PolygonData poly1 = BooleanOps::fromQtPolygon(m_polygons[firstIdx]);
         BooleanOps::PolygonData poly2 = BooleanOps::fromQtPolygon(m_polygons[secondIdx]);
         
-        // 确定操作类型
+        // Determine operation type
         BooleanOps::Operation op;
         QString opName;
         QString opSymbol;
         switch (operationType) {
             case 0:
                 op = BooleanOps::Operation::Union;
-                opName = "并集";
+                opName = "Union";
                 opSymbol = " ∪ ";
                 break;
             case 1:
                 op = BooleanOps::Operation::Intersection;
-                opName = "交集";
+                opName = "Intersection";
                 opSymbol = " ∩ ";
                 break;
             case 2:
                 op = BooleanOps::Operation::Difference;
-                opName = "差集";
+                opName = "Difference";
                 opSymbol = " − ";
                 break;
             default:
                 return;
         }
         
-        // 执行布尔运算
+        // Perform boolean operation
         std::vector<BooleanOps::PolygonData> results = BooleanOps::performOperation(poly1, poly2, op);
         
         if (results.empty()) {
-            QMessageBox::information(this, "结果", 
-                QString("布尔运算 %1%2%3 的结果为空")
+            QMessageBox::information(this, "Result", 
+                QString("The boolean operation %1%2%3 resulted in an empty polygon")
                     .arg(m_polygons[firstIdx]->getName())
                     .arg(opSymbol)
                     .arg(m_polygons[secondIdx]->getName()));
             return;
         }
         
-        // 为每个结果创建新模型
+        // Create new model for each result
         int addedCount = 0;
         for (size_t i = 0; i < results.size(); ++i) {
-            QString resultName = QString("%1_结果_%2").arg(opName).arg(++m_resultCounter);
+            QString resultName = QString("%1_Result_%2").arg(opName).arg(++m_resultCounter);
             if (results.size() > 1) {
                 resultName += QString("_%1").arg(i + 1);
             }
@@ -320,7 +328,7 @@ void MainWindow::performBooleanOperation()
             if (resultPolygon && resultPolygon->isValid()) {
                 m_polygons.append(resultPolygon);
                 
-                // 添加到列表
+                // Add to list
                 QListWidgetItem* item = new QListWidgetItem(resultName);
                 item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
                 item->setCheckState(Qt::Checked);
@@ -332,13 +340,20 @@ void MainWindow::performBooleanOperation()
             }
         }
         
-        // 更新渲染
-        updateRenderWidget();
+        // Update rendering - use setPolygons to recenter after adding new polygons
+        QVector<Polygon*> visiblePolygons;
+        for (int i = 0; i < m_listWidget->count() && i < m_polygons.size(); ++i) {
+            QListWidgetItem* item = m_listWidget->item(i);
+            if (item->checkState() == Qt::Checked) {
+                visiblePolygons.append(m_polygons[i]);
+            }
+        }
+        m_renderWidget->setPolygons(visiblePolygons);
         updateToggleAllCheckbox();
         
-        // 显示成功消息
-        QMessageBox::information(this, "成功", 
-            QString("布尔运算 %1%2%3 完成！\n生成了 %4 个结果多边形。")
+        // Show success message
+        QMessageBox::information(this, "Success", 
+            QString("Boolean operation %1%2%3 completed!\nGenerated %4 result polygons.")
                 .arg(m_polygons[firstIdx]->getName())
                 .arg(opSymbol)
                 .arg(m_polygons[secondIdx]->getName())
