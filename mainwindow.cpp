@@ -8,7 +8,9 @@
 #include <QLabel>
 #include <QDir>
 #include <QCheckBox>
+#include <QStatusBar>
 #include "booleanopsdialog.h"
+#include "op/booleanops.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -86,15 +88,31 @@ void MainWindow::loadPolygonFiles()
         return;
     }
     
-    // 清空现有数据
-    clearPolygons();
-    m_listWidget->clear();
+    // 不再清空现有数据，改为追加模式
+    // clearPolygons();
+    // m_listWidget->clear();
     
     // 加载每个选中的文件
     int loadedCount = 0;
+    int failedCount = 0;
     for (const QString& filepath : filePaths) {
         QFileInfo fileInfo(filepath);
         QString filename = fileInfo.fileName();
+        
+        // 检查是否已经加载过这个文件
+        bool alreadyLoaded = false;
+        for (const Polygon* poly : m_polygons) {
+            if (poly->getName() == filename) {
+                alreadyLoaded = true;
+                break;
+            }
+        }
+        
+        if (alreadyLoaded) {
+            QMessageBox::information(this, "提示", 
+                QString("文件 %1 已经加载过了，跳过。").arg(filename));
+            continue;
+        }
         
         Polygon* polygon = new Polygon(filename);
         if (polygon->loadFromFile(filepath)) {
@@ -109,6 +127,7 @@ void MainWindow::loadPolygonFiles()
             loadedCount++;
         } else {
             delete polygon;
+            failedCount++;
             QMessageBox::warning(this, "错误", 
                 QString("无法加载文件: %1").arg(filename));
         }
@@ -223,9 +242,10 @@ void MainWindow::onItemSelectionChanged()
     updateRenderWidget();
 }
 
+// 修改 performBooleanOperation 函数以处理多个结果
+
 void MainWindow::performBooleanOperation()
 {
-    // 检查是否至少有两个模型
     if (m_polygons.size() < 2) {
         QMessageBox::warning(this, "警告", 
             "至少需要两个模型才能执行布尔操作！");
@@ -247,12 +267,81 @@ void MainWindow::performBooleanOperation()
             return;
         }
         
-        // 显示选择的操作（暂时不执行实际的布尔运算）
+        // 转换为标准库格式
+        BooleanOps::PolygonData poly1 = BooleanOps::fromQtPolygon(m_polygons[firstIdx]);
+        BooleanOps::PolygonData poly2 = BooleanOps::fromQtPolygon(m_polygons[secondIdx]);
+        
+        // 确定操作类型
+        BooleanOps::Operation op;
         QString opName;
+        QString opSymbol;
         switch (operationType) {
-            case 0: opName = "并集"; break;
-            case 1: opName = "交集"; break;
-            case 2: opName = "差集"; break;
+            case 0:
+                op = BooleanOps::Operation::Union;
+                opName = "并集";
+                opSymbol = " ∪ ";
+                break;
+            case 1:
+                op = BooleanOps::Operation::Intersection;
+                opName = "交集";
+                opSymbol = " ∩ ";
+                break;
+            case 2:
+                op = BooleanOps::Operation::Difference;
+                opName = "差集";
+                opSymbol = " − ";
+                break;
+            default:
+                return;
         }
+        
+        // 执行布尔运算
+        std::vector<BooleanOps::PolygonData> results = BooleanOps::performOperation(poly1, poly2, op);
+        
+        if (results.empty()) {
+            QMessageBox::information(this, "结果", 
+                QString("布尔运算 %1%2%3 的结果为空")
+                    .arg(m_polygons[firstIdx]->getName())
+                    .arg(opSymbol)
+                    .arg(m_polygons[secondIdx]->getName()));
+            return;
+        }
+        
+        // 为每个结果创建新模型
+        int addedCount = 0;
+        for (size_t i = 0; i < results.size(); ++i) {
+            QString resultName = QString("%1_结果_%2").arg(opName).arg(++m_resultCounter);
+            if (results.size() > 1) {
+                resultName += QString("_%1").arg(i + 1);
+            }
+            
+            Polygon* resultPolygon = BooleanOps::toQtPolygon(results[i], resultName);
+            
+            if (resultPolygon && resultPolygon->isValid()) {
+                m_polygons.append(resultPolygon);
+                
+                // 添加到列表
+                QListWidgetItem* item = new QListWidgetItem(resultName);
+                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+                item->setCheckState(Qt::Checked);
+                m_listWidget->addItem(item);
+                
+                addedCount++;
+            } else {
+                delete resultPolygon;
+            }
+        }
+        
+        // 更新渲染
+        updateRenderWidget();
+        updateToggleAllCheckbox();
+        
+        // 显示成功消息
+        QMessageBox::information(this, "成功", 
+            QString("布尔运算 %1%2%3 完成！\n生成了 %4 个结果多边形。")
+                .arg(m_polygons[firstIdx]->getName())
+                .arg(opSymbol)
+                .arg(m_polygons[secondIdx]->getName())
+                .arg(addedCount));
     }
 }

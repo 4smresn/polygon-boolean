@@ -8,9 +8,12 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
-add_executable(PolygonViewer
+# 添加 Clipper2 头文件路径
+include_directories(${CMAKE_SOURCE_DIR}/third_party/Clipper2/CPP/Clipper2Lib/include)
+
+set(PROJECT_SOURCES
     main.cpp
     mainwindow.cpp
     mainwindow.h
@@ -20,10 +23,17 @@ add_executable(PolygonViewer
     renderwidget.h
     booleanopsdialog.cpp
     booleanopsdialog.h
+    op/booleanops.cpp
+    op/booleanops.h
+    # 添加 Clipper2 源文件
+    third_party/Clipper2/CPP/Clipper2Lib/src/clipper.engine.cpp
+    third_party/Clipper2/CPP/Clipper2Lib/src/clipper.offset.cpp
+    third_party/Clipper2/CPP/Clipper2Lib/src/clipper.rectclip.cpp
 )
 
-target_link_libraries(PolygonViewer
+add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
+
+target_link_libraries(${PROJECT_NAME} 
     Qt6::Core
-    Qt6::Gui
     Qt6::Widgets
 )

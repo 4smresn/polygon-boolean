@@ -3,6 +3,7 @@
 #include <QPen>
 #include <QBrush>
 #include <QPolygonF>
+#include <QPainterPath>
 
 RenderWidget::RenderWidget(QWidget* parent)
     : QWidget(parent)
@@ -55,15 +56,34 @@ void RenderWidget::paintEvent(QPaintEvent* event)
 
 void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
 {
-    const QVector<QPointF>& points = polygon->getPoints();
-    if (points.size() < 3) {
+    const QVector<QVector<QPointF>>& loops = polygon->getLoops();
+    if (loops.isEmpty() || loops[0].size() < 3) {
         return;
     }
     
-    // 创建QPolygonF
-    QPolygonF qpolygon;
-    for (const QPointF& point : points) {
-        qpolygon.append(point);
+    // 使用 QPainterPath 来支持带孔多边形
+    QPainterPath path;
+    
+    // 第一个循环是外轮廓（逆时针）
+    const QVector<QPointF>& outerLoop = loops[0];
+    if (!outerLoop.isEmpty()) {
+        path.moveTo(outerLoop[0]);
+        for (int i = 1; i < outerLoop.size(); ++i) {
+            path.lineTo(outerLoop[i]);
+        }
+        path.closeSubpath();
+    }
+    
+    // 其余循环是孔洞（顺时针）
+    for (int loopIdx = 1; loopIdx < loops.size(); ++loopIdx) {
+        const QVector<QPointF>& hole = loops[loopIdx];
+        if (hole.size() >= 3) {
+            path.moveTo(hole[0]);
+            for (int i = 1; i < hole.size(); ++i) {
+                path.lineTo(hole[i]);
+            }
+            path.closeSubpath();
+        }
     }
     
     // 根据是否高亮设置不同的颜色
@@ -89,8 +109,8 @@ void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
         painter.setBrush(brush);
     }
     
-    // 绘制多边形
-    painter.drawPolygon(qpolygon);
+    // 绘制带孔的多边形
+    painter.drawPath(path);
 }
 
 QRectF RenderWidget::calculateBounds() const
@@ -109,11 +129,14 @@ QRectF RenderWidget::calculateBounds() const
             continue;
         }
         
-        for (const QPointF& point : polygon->getPoints()) {
-            minX = qMin(minX, point.x());
-            minY = qMin(minY, point.y());
-            maxX = qMax(maxX, point.x());
-            maxY = qMax(maxY, point.y());
+        // 遍历所有循环的所有点
+        for (const QVector<QPointF>& loop : polygon->getLoops()) {
+            for (const QPointF& point : loop) {
+                minX = qMin(minX, point.x());
+                minY = qMin(minY, point.y());
+                maxX = qMax(maxX, point.x());
+                maxY = qMax(maxY, point.y());
+            }
         }
     }
     
