@@ -26,33 +26,63 @@
 
 - Qt 6 (Core, Widgets)
 - CMake 3.16+
-- C++17 编译器
-- Clipper2 库
+- C++17 编译器（GCC 7+, Clang 5+, MSVC 2017+）
+- Clipper2 库（已包含在 third_party 目录）
 
 ### 编译步骤
 
-```bash
-# 1. 克隆仓库（包含子模块）
-git clone --recursive <your-repo-url>
-cd boolean
+#### Linux / macOS
 
-# 2. 下载 Clipper2（如果没有使用 submodule）
+```bash
+# 1. 克隆仓库
+git clone https://github.com/4smresn/polygon-boolean.git
+cd polygon-boolean
+
+# 2. 下载 Clipper2（如果 third_party 为空）
 mkdir -p third_party
 cd third_party
 git clone https://github.com/AngusJohnson/Clipper2.git
 cd ..
 
-# 3. 创建构建目录
+# 3. 构建并运行
+./test.sh
+
+# 或者手动构建
 mkdir build
 cd build
-
-# 4. 配置和编译
 cmake ..
 make
-
-# 5. 运行
 ./PolygonViewer
 ```
+
+#### Windows
+
+```batch
+# 1. 克隆仓库
+git clone https://github.com/4smresn/polygon-boolean.git
+cd polygon-boolean
+
+# 2. 下载 Clipper2（如果 third_party 为空）
+mkdir third_party
+cd third_party
+git clone https://github.com/AngusJohnson/Clipper2.git
+cd ..
+
+# 3. 构建并运行
+test.bat
+
+# 或者使用 CMake GUI / Visual Studio
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+Release\PolygonViewer.exe
+```
+
+#### 快速构建脚本
+
+- **Linux/macOS**: `./test.sh` (完整构建) 或 `./test.sh --run` (仅运行)
+- **Windows**: `test.bat` (完整构建) 或 `test.bat --run` (仅运行)
 
 ## 文件格式
 

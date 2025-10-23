@@ -4,9 +4,19 @@ project(PolygonViewer VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 支持 Windows 下的 Unicode
+if(WIN32)
+    add_definitions(-DUNICODE -D_UNICODE)
+endif()
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
+
+# macOS 特定设置
+if(APPLE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment version")
+endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
@@ -32,6 +42,20 @@ set(PROJECT_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
+
+# Windows 下不显示控制台窗口（可选）
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+endif()
+
+# macOS 下创建应用包（可选）
+if(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+    )
+endif()
 
 target_link_libraries(${PROJECT_NAME} 
     Qt6::Core
