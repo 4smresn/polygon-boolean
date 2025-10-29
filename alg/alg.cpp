@@ -26,8 +26,92 @@ Alg::Alg(stdPolygon a, stdPolygon b, int ops, double tol)
     }
 }
 
+double Alg::computeDistance(Point *p1, Point *p2)
+{
+    return sqrt((p1->x - p2->x) * (p1->x - p2->x) + (p1->y - p2->y) * (p1->y - p2->y));
+}
+
+double Alg::computeDistancePointToLine(Point *p, Point *start, Point *end)
+{
+    double x1 = start->x;
+    double y1 = start->y;
+    double x2 = end->x;
+    double y2 = end->y;
+    double x3 = p->x;
+    double y3 = p->y;
+    return std::abs((y2 - y1) * x3 - (x2 - x1) * y3 + x2 * y1 - y2 * x1) / std::sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
+}
+
+void Alg::refineResult()
+{
+    for (auto &polygon : result)
+    {
+        for (auto &loop : polygon)
+        {
+            for (auto ptPointer=loop.begin(); ptPointer!=loop.end(); ptPointer++)
+            {
+                if((*ptPointer)->isIntersection)
+                {
+                    auto startPointer = ptPointer;
+                    auto endPointer = ptPointer;
+
+                    bool flag = 1;
+                    while((*startPointer)->isIntersection)
+                    {
+                        if(startPointer==ptPointer)
+                        {
+                            flag=0;
+                            break;
+                        }
+                        if(startPointer==loop.begin())
+                        {
+                            startPointer=loop.end();
+                        }
+                        startPointer--;
+                    }
+
+                    if(!flag)
+                    {
+                        continue;
+                    }
+
+                    while((*endPointer)->isIntersection)
+                    {
+                        if(endPointer==ptPointer)
+                        {
+                            flag=0;
+                            break;
+                        }
+                        endPointer++;
+                        if(endPointer==loop.end())
+                        {
+                            endPointer=loop.begin();
+                        }
+                    }
+
+                    if(!flag)
+                    {
+                        continue;
+                    }
+
+                    double lineDistance = computeDistance((*startPointer), (*endPointer));
+                    double pointDistance = computeDistancePointToLine((*ptPointer), (*startPointer), (*endPointer));
+
+                    double scale = pointDistance / lineDistance;
+
+                    if(scale<tol)
+                    {
+                        (*ptPointer)->deleteFlag = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
 Alg::stdPolygons Alg::getResult()
 {
+    //refineResult();
     stdPolygons res;
     for (auto &polygon : result)
     {
@@ -37,7 +121,10 @@ Alg::stdPolygons Alg::getResult()
             stdLoop loop2;
             for (auto &pt : loop)
             {
-                loop2.push_back({pt->x, pt->y});
+                if (!pt->deleteFlag)
+                {
+                    loop2.push_back({pt->x, pt->y});
+                }
             }
             loops.push_back(loop2);
         }
@@ -109,7 +196,7 @@ bool Alg::calculateIntersection(Point *startA, Point *endA, Point *startB, Point
     }
     double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
     double u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / d;
-    if (t + tol < 0 || t - tol > 1 || u + tol < 0 || u - tol > 1)
+    if (t+tol < 0 || t-tol > 1 || u + tol < 0 || u-tol > 1)
     {
         return false;
     }
@@ -342,6 +429,10 @@ void Alg::excuteUnion()
                 break;
             }
         }
+    }
+
+    if(hasIntersection&&result.empty()){
+        result.push_back(A);
     }
 }
 
@@ -584,7 +675,7 @@ void Alg::excute()
 }
 
 // int main(){
-//     Alg alg({{{0,0},{1,0},{1,1},{0,1}}},{{{1.0000001,0},{2,0},{2,1},{1.0000001,1}}});
+//     Alg alg({{{1.0000001,0},{2,0},{2,1},{1.0000001,1}}},{{{0,0},{1,0},{1,1},{0,1}}});
 //     alg.excute();
 //     std::cout<<"copy that";
 // }

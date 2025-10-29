@@ -1,5 +1,6 @@
 #include <list>
 #include <vector>
+#include <cmath>
 
 class Alg
 {
@@ -25,6 +26,8 @@ class Alg
 
         bool valid = 1;
 
+        bool deleteFlag = false;
+
         Point(double x, double y, int index)
         {
             this->x = x;
@@ -42,7 +45,6 @@ class Alg
     using stdPolygon = std::vector<stdLoop>;
     using stdPolygons = std::vector<stdPolygon>;
 
-private:
     int ops;
     double tol=1e-6;
     Polygon A;
@@ -59,6 +61,8 @@ private:
 
 public:
     Alg(stdPolygon a, stdPolygon b, int ops=0, double tol=1e-6);
+
+    Alg(Polygon a, Polygon b, int ops=2, double tol=1e-6);
 
     stdPolygons getResult();
 
@@ -90,5 +94,13 @@ public:
 
     void excuteDifference();
 
+    void excuteInternal();
+
     void excute();
+
+    void refineResult();
+
+    double computeDistance(Point *p1, Point *p2);
+
+    double computeDistancePointToLine(Point *p, Point *start, Point *end);
 };
