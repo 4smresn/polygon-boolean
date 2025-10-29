@@ -276,6 +276,11 @@ void Alg::insertIntersections()
             }
             while (i < intersections.size() && intersections[i]->loopIndexInA == loopIndex && intersections[i]->startIndexInA == startIndex)
             {
+                if(i==intersections.size()-1&&intersections[i]->isEnterA==intersections[0]->isEnterA){
+                    intersections[i]->valid=0;
+                    i++;
+                    break;
+                }
                 intersections[i]->indexInA = newLoop.size();
                 if (intersections[i]->isEnterA != preIsEnterA)
                 {
@@ -341,6 +346,9 @@ void Alg::Union()
 {
     for (auto &i : intersections)
     {
+        if(!i->valid){
+            continue;
+        }
         auto startPointPointer = _A[i->loopIndexInA].begin() + i->indexInA;
         auto startLoopPointer = _A.begin() + i->loopIndexInA;
         if (!(*startPointPointer)->isEnterA || (*startPointPointer)->isUsed)
@@ -440,6 +448,9 @@ void Alg::Intersection()
 {
     for (auto &i : intersections)
     {
+        if(!i->valid){
+            continue;
+        }
         auto startPointPointer = _A[i->loopIndexInA].begin() + i->indexInA;
         auto startLoopPointer = _A.begin() + i->loopIndexInA;
         if ((*startPointPointer)->isEnterA || (*startPointPointer)->isUsed)
@@ -546,6 +557,9 @@ void Alg::Difference()
 {
     for (auto &i : intersections)
     {
+        if(!i->valid){
+            continue;
+        }
         auto startPointPointer = _A[i->loopIndexInA].begin() + i->indexInA;
         auto startLoopPointer = _A.begin() + i->loopIndexInA;
         if (!(*startPointPointer)->isEnterA || (*startPointPointer)->isUsed)
@@ -675,7 +689,7 @@ void Alg::excute()
 }
 
 // int main(){
-//     Alg alg({{{1.0000001,0},{2,0},{2,1},{1.0000001,1}}},{{{0,0},{1,0},{1,1},{0,1}}});
+//     Alg alg({{{1,0},{2,0},{2,1},{1,1}}},{{{0,0},{1,0},{1,1},{0,1}}});
 //     alg.excute();
 //     std::cout<<"copy that";
 // }
