@@ -21,6 +21,9 @@ class Alg
         int indexInB = -1;
 
         int index = -1;
+        int indexInIntersections = -1;
+
+        bool valid = 1;
 
         Point(double x, double y, int index)
         {
@@ -41,6 +44,7 @@ class Alg
 
 private:
     int ops;
+    double tol=1e-6;
     Polygon A;
     Polygon B;
     Loop intersections;
@@ -49,8 +53,12 @@ private:
     Polygons result;
     Polygons innerLoops;
 
+    bool hasIntersection;
+    bool AContainsB;
+    bool BContainsA;
+
 public:
-    Alg(stdPolygon a, stdPolygon b, int ops);
+    Alg(stdPolygon a, stdPolygon b, int ops=0, double tol=1e-6);
 
     stdPolygons getResult();
 
@@ -73,6 +81,14 @@ public:
     void Union();
 
     void excuteUnion();
+
+    void Intersection();
+
+    void excuteIntersection();
+
+    void Difference();
+
+    void excuteDifference();
 
     void excute();
 };

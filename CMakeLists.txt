@@ -20,9 +20,6 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
-# 添加 Clipper2 头文件路径
-include_directories(${CMAKE_SOURCE_DIR}/third_party/Clipper2/CPP/Clipper2Lib/include)
-
 set(PROJECT_SOURCES
     main.cpp
     mainwindow.cpp
@@ -36,9 +33,8 @@ set(PROJECT_SOURCES
     op/booleanops.cpp
     op/booleanops.h
     # 添加 Clipper2 源文件
-    third_party/Clipper2/CPP/Clipper2Lib/src/clipper.engine.cpp
-    third_party/Clipper2/CPP/Clipper2Lib/src/clipper.offset.cpp
-    third_party/Clipper2/CPP/Clipper2Lib/src/clipper.rectclip.cpp
+    alg/alg.cpp
+    alg/alg.h
 )
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})

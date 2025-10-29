@@ -260,9 +260,9 @@ void MainWindow::onItemSelectionChanged()
 
 void MainWindow::performBooleanOperation()
 {
-    if (m_polygons.size() < 2) {
+    if (m_polygons.size() < 1) {
         QMessageBox::warning(this, "Warning", 
-            "At least two models are required to perform boolean operations!");
+            "At least one model is required to perform boolean operations!");
         return;
     }
     
@@ -273,36 +273,26 @@ void MainWindow::performBooleanOperation()
         int firstIdx = dialog.getFirstOperandIndex();
         int operationType = dialog.getOperationType();
         int secondIdx = dialog.getSecondOperandIndex();
-        BooleanOps::Tolerance tolerance = dialog.getTolerance();
+        double tolerance = dialog.getTolerance();
         
-        // Check if the same model was selected
-        if (firstIdx == secondIdx) {
-            QMessageBox::warning(this, "Warning", 
-                "Cannot perform boolean operations on the same model!");
-            return;
-        }
         
         // Convert to standard library format
-        BooleanOps::PolygonData poly1 = BooleanOps::fromQtPolygon(m_polygons[firstIdx]);
-        BooleanOps::PolygonData poly2 = BooleanOps::fromQtPolygon(m_polygons[secondIdx]);
+        BooleanOps::OpPolygon poly1 = BooleanOps::fromQtPolygon(m_polygons[firstIdx]);
+        BooleanOps::OpPolygon poly2 = BooleanOps::fromQtPolygon(m_polygons[secondIdx]);
         
-        // Determine operation type
-        BooleanOps::Operation op;
+       
         QString opName;
         QString opSymbol;
         switch (operationType) {
             case 0:
-                op = BooleanOps::Operation::Union;
                 opName = "Union";
                 opSymbol = " ∪ ";
                 break;
             case 1:
-                op = BooleanOps::Operation::Intersection;
                 opName = "Intersection";
                 opSymbol = " ∩ ";
                 break;
             case 2:
-                op = BooleanOps::Operation::Difference;
                 opName = "Difference";
                 opSymbol = " − ";
                 break;
@@ -311,7 +301,7 @@ void MainWindow::performBooleanOperation()
         }
         
         // Perform boolean operation with user-specified tolerance
-        std::vector<BooleanOps::PolygonData> results = BooleanOps::performOperation(poly1, poly2, op, tolerance);
+        std::vector<BooleanOps::OpPolygon> results = BooleanOps::performOperation(poly1, poly2, operationType, tolerance);
         
         if (results.empty()) {
             QMessageBox::information(this, "Result", 

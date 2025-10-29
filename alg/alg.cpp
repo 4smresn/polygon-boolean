@@ -2,9 +2,10 @@
 #include <algorithm>
 #include <iostream>
 
-Alg::Alg(stdPolygon a, stdPolygon b, int ops)
+Alg::Alg(stdPolygon a, stdPolygon b, int ops, double tol)
 {
     this->ops = ops;
+    this->tol = tol;
     for (auto &l : a)
     {
         Loop loop2;
@@ -108,7 +109,7 @@ bool Alg::calculateIntersection(Point *startA, Point *endA, Point *startB, Point
     }
     double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
     double u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / d;
-    if (t < 0 || t > 1 || u < 0 || u > 1)
+    if (t + tol < 0 || t - tol > 1 || u + tol < 0 || u - tol > 1)
     {
         return false;
     }
@@ -153,6 +154,7 @@ void Alg::calculateIntersections()
                         intersection->loopIndexInB = loopBIndex;
                         intersection->startIndexInA = startAIndex;
                         intersection->startIndexInB = startBIndex;
+                        intersection->indexInIntersections = intersections.size();
                         intersections.push_back(intersection);
                     }
                 }
@@ -176,6 +178,7 @@ void Alg::insertIntersections()
     {
         std::vector<Point *> newLoop;
         int j = 0;
+        bool preIsEnterA = i < intersections.size() ? (!intersections[i]->isEnterA) : 0;
         while (i < intersections.size() && intersections[i]->loopIndexInA == loopIndex)
         {
             int startIndex = intersections[i]->startIndexInA;
@@ -187,7 +190,15 @@ void Alg::insertIntersections()
             while (i < intersections.size() && intersections[i]->loopIndexInA == loopIndex && intersections[i]->startIndexInA == startIndex)
             {
                 intersections[i]->indexInA = newLoop.size();
-                newLoop.push_back(intersections[i]);
+                if (intersections[i]->isEnterA != preIsEnterA)
+                {
+                    newLoop.push_back(intersections[i]);
+                    preIsEnterA = !preIsEnterA;
+                }
+                else
+                {
+                    intersections[i]->valid = 0;
+                }
                 i++;
             }
         }
@@ -223,7 +234,10 @@ void Alg::insertIntersections()
             while (i < intersections.size() && intersections[i]->loopIndexInB == loopIndex && intersections[i]->startIndexInB == startIndex)
             {
                 intersections[i]->indexInB = newLoop.size();
-                newLoop.push_back(intersections[i]);
+                if (intersections[i]->valid)
+                {
+                    newLoop.push_back(intersections[i]);
+                }
                 i++;
             }
         }
@@ -246,12 +260,15 @@ void Alg::Union()
         {
             continue;
         }
+        (*startPointPointer)->isUsed = true;
 
         Polygon p;
         std::vector<Point *> loop;
 
         bool onA = 1;
-        while (!(*startPointPointer)->isUsed)
+
+        int indexInIntersections = (*startPointPointer)->indexInIntersections;
+        do
         {
             loop.push_back(*startPointPointer);
             (*startPointPointer)->isUsed = true;
@@ -275,6 +292,11 @@ void Alg::Union()
                     onA = 1;
                 }
             }
+        } while ((*startPointPointer)->indexInIntersections != indexInIntersections);
+
+        if (computeArea(loop) == 0)
+        {
+            continue;
         }
 
         p.push_back(loop);
@@ -291,13 +313,9 @@ void Alg::Union()
 
 void Alg::excuteUnion()
 {
-    calculateIntersections();
-    insertIntersections();
     Union();
 
-    bool AContainsB = isLoopAContainsLoopB(A[0], B[0]);
-    bool BContainsA = isLoopAContainsLoopB(B[0], A[0]);
-    if (A[0].size() == _A[0].size())
+    if (!hasIntersection)
     {
         if (AContainsB)
         {
@@ -327,10 +345,246 @@ void Alg::excuteUnion()
     }
 }
 
+void Alg::Intersection()
+{
+    for (auto &i : intersections)
+    {
+        auto startPointPointer = _A[i->loopIndexInA].begin() + i->indexInA;
+        auto startLoopPointer = _A.begin() + i->loopIndexInA;
+        if ((*startPointPointer)->isEnterA || (*startPointPointer)->isUsed)
+        {
+            continue;
+        }
+        (*startPointPointer)->isUsed = true;
+
+        Polygon p;
+        std::vector<Point *> loop;
+
+        bool onA = 1;
+
+        int indexInIntersections = (*startPointPointer)->indexInIntersections;
+        do
+        {
+            loop.push_back(*startPointPointer);
+            (*startPointPointer)->isUsed = true;
+            startPointPointer++;
+            if (startPointPointer == (*startLoopPointer).end())
+            {
+                startPointPointer = (*startLoopPointer).begin();
+            }
+            if ((*startPointPointer)->isIntersection)
+            {
+                if (onA)
+                {
+                    startLoopPointer = _B.begin() + (*startPointPointer)->loopIndexInB;
+                    startPointPointer = (*startLoopPointer).begin() + (*startPointPointer)->indexInB;
+                    onA = 0;
+                }
+                else
+                {
+                    startLoopPointer = _A.begin() + (*startPointPointer)->loopIndexInA;
+                    startPointPointer = (*startLoopPointer).begin() + (*startPointPointer)->indexInA;
+                    onA = 1;
+                }
+            }
+        } while ((*startPointPointer)->indexInIntersections != indexInIntersections);
+
+        if (computeArea(loop) == 0)
+        {
+            continue;
+        }
+
+        p.push_back(loop);
+        if (isOuterLoop(loop))
+        {
+            result.push_back(p);
+        }
+        else
+        {
+            innerLoops.push_back(p);
+        }
+    }
+}
+
+void Alg::excuteIntersection()
+{
+    Intersection();
+
+    if (!hasIntersection)
+    {
+        if (AContainsB)
+        {
+            result.push_back(B);
+        }
+        else if (BContainsA)
+        {
+            result.push_back(A);
+        }
+    }
+
+    for (int i = 1; i < A.size(); i++)
+    {
+        if (A[i].size() == _A[i].size())
+        {
+            innerLoops.push_back({A[i]});
+        }
+    }
+
+    for (int i = 1; i < B.size(); i++)
+    {
+        if (B[i].size() == _B[i].size())
+        {
+            innerLoops.push_back({B[i]});
+        }
+    }
+
+    for (auto &inner : innerLoops)
+    {
+        for (auto &outer : result)
+        {
+            if (isPointInLoop(inner[0][0], outer[0]))
+            {
+                outer.push_back(inner[0]);
+                break;
+            }
+        }
+    }
+}
+
+void Alg::Difference()
+{
+    for (auto &i : intersections)
+    {
+        auto startPointPointer = _A[i->loopIndexInA].begin() + i->indexInA;
+        auto startLoopPointer = _A.begin() + i->loopIndexInA;
+        if (!(*startPointPointer)->isEnterA || (*startPointPointer)->isUsed)
+        {
+            continue;
+        }
+        (*startPointPointer)->isUsed = true;
+
+        Polygon p;
+        std::vector<Point *> loop;
+
+        bool onA = 1;
+
+        int indexInIntersections = (*startPointPointer)->indexInIntersections;
+        do
+        {
+            loop.push_back(*startPointPointer);
+            (*startPointPointer)->isUsed = true;
+
+            if (onA)
+            {
+                startPointPointer++;
+                if (startPointPointer == (*startLoopPointer).end())
+                {
+                    startPointPointer = (*startLoopPointer).begin();
+                }
+            }
+            else
+            {
+                if (startPointPointer == (*startLoopPointer).begin())
+                {
+                    startPointPointer = (*startLoopPointer).end();
+                }
+                startPointPointer--;
+            }
+
+            if ((*startPointPointer)->isIntersection)
+            {
+                if (onA)
+                {
+                    startLoopPointer = _B.begin() + (*startPointPointer)->loopIndexInB;
+                    startPointPointer = (*startLoopPointer).begin() + (*startPointPointer)->indexInB;
+                    onA = 0;
+                }
+                else
+                {
+                    startLoopPointer = _A.begin() + (*startPointPointer)->loopIndexInA;
+                    startPointPointer = (*startLoopPointer).begin() + (*startPointPointer)->indexInA;
+                    onA = 1;
+                }
+            }
+        } while ((*startPointPointer)->indexInIntersections != indexInIntersections);
+
+        if (computeArea(loop) == 0)
+        {
+            continue;
+        }
+
+        p.push_back(loop);
+        if (isOuterLoop(loop))
+        {
+            result.push_back(p);
+        }
+        else
+        {
+            innerLoops.push_back(p);
+        }
+    }
+}
+
+void Alg::excuteDifference()
+{
+    Difference();
+
+    if(!hasIntersection){
+        if(AContainsB){
+            innerLoops.push_back({Loop(B[0].rbegin(), B[0].rend())});
+            for(int i=1;i<B.size();i++){
+                result.push_back({Loop(B[i].rbegin(), B[i].rend())});
+            }
+        }
+        else if(BContainsA){}
+        else{
+            result.push_back(A);
+        }
+    }
+
+    for(int i=1;i<B.size();i++){
+        if(B[i].size() == _B[i].size()){
+            result.push_back({Loop(B[i].rbegin(), B[i].rend())});
+        }
+    }
+
+    for (auto &inner : innerLoops)
+    {
+        for (auto &outer : result)
+        {
+            if (isPointInLoop(inner[0][0], outer[0]))
+            {
+                outer.push_back(inner[0]);
+                break;
+            }
+        }
+    }
+}
+
 void Alg::excute()
 {
-    if (ops == 1)
+    calculateIntersections();
+    insertIntersections();
+    hasIntersection = intersections.size() > 0;
+    AContainsB = computeArea(A[0]) > computeArea(B[0]) && A[0].size() == _A[0].size() && isPointInLoop(B[0][0], A[0]);
+    BContainsA = computeArea(B[0]) > computeArea(A[0]) && B[0].size() == _B[0].size() && isPointInLoop(A[0][0], B[0]);
+
+    if (ops == 0)
     {
         excuteUnion();
     }
+    else if (ops == 1)
+    {
+        excuteIntersection();
+    }
+    else if (ops == 2)
+    {
+        excuteDifference();
+    }
 }
+
+// int main(){
+//     Alg alg({{{0,0},{1,0},{1,1},{0,1}}},{{{1.0000001,0},{2,0},{2,1},{1.0000001,1}}});
+//     alg.excute();
+//     std::cout<<"copy that";
+// }

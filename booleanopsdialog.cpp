@@ -116,11 +116,8 @@ int BooleanOpsDialog::getSecondOperandIndex() const
     return m_secondOperandCombo->currentIndex();
 }
 
-BooleanOps::Tolerance BooleanOpsDialog::getTolerance() const
+double BooleanOpsDialog::getTolerance() const
 {
-    BooleanOps::Tolerance tol;
-    tol.precision = m_precisionSpinBox->value();
-    tol.pointMergeTolerance = std::pow(10.0, -tol.precision);
-    tol.minSegmentLength = std::pow(10.0, -tol.precision);
-    return tol;
+    int tol = m_precisionSpinBox->value();
+    return std::pow(10.0, -tol);
 }
