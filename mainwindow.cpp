@@ -86,7 +86,7 @@ void MainWindow::loadPolygonFiles()
     QStringList filePaths = QFileDialog::getOpenFileNames(
         this,
         "Select Polygon Files",
-        "/home/f/cpp-project/polygon-boolean/case",
+        "./../case",
         "Polygon Files (*.txt);;All Files (*.*)"
     );
     
