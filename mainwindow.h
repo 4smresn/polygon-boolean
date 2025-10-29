@@ -35,6 +35,9 @@ private:
     QVector<Polygon*> m_polygons;
     QCheckBox* m_toggleAllCheckbox;
     int m_resultCounter = 0;  // 添加结果计数器
+
+    int loadedCount = 0;
+    int failedCount = 0;
 };
 
 #endif // MAINWINDOW_H

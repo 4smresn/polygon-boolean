@@ -22,8 +22,8 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle("Polygon Viewer");
     
     // 设置窗口大小
-    resize(1600, 1000);
-    setMinimumSize(1200, 800);
+    resize(1920, 1080);
+    setMinimumSize(1920, 1080);
 }
 
 MainWindow::~MainWindow()
@@ -86,7 +86,7 @@ void MainWindow::loadPolygonFiles()
     QStringList filePaths = QFileDialog::getOpenFileNames(
         this,
         "Select Polygon Files",
-        QDir::currentPath(),
+        "/home/f/cpp-project/polygon-boolean/case",
         "Polygon Files (*.txt);;All Files (*.*)"
     );
     
@@ -99,26 +99,10 @@ void MainWindow::loadPolygonFiles()
     // m_listWidget->clear();
     
     // 加载每个选中的文件
-    int loadedCount = 0;
-    int failedCount = 0;
+    
     for (const QString& filepath : filePaths) {
         QFileInfo fileInfo(filepath);
-        QString filename = fileInfo.fileName();
-        
-        // 检查是否已经加载过这个文件
-        bool alreadyLoaded = false;
-        for (const Polygon* poly : m_polygons) {
-            if (poly->getName() == filename) {
-                alreadyLoaded = true;
-                break;
-            }
-        }
-        
-        if (alreadyLoaded) {
-            QMessageBox::information(this, "Info", 
-                QString("File %1 has already been loaded, skipping.").arg(filename));
-            continue;
-        }
+        QString filename = QString("%1").arg(loadedCount, 4, 10, QChar('0'));
         
         Polygon* polygon = new Polygon(filename);
         if (polygon->loadFromFile(filepath)) {
@@ -204,6 +188,17 @@ void MainWindow::updateRenderWidget()
         }
     }
     
+    for(int i=0; i<visiblePolygons.size(); i++)
+    {
+        if(visiblePolygons[i]->isHighlighted())
+        {
+            Polygon* tmp=visiblePolygons.back();
+            visiblePolygons.back()=visiblePolygons[i];
+            visiblePolygons[i]=tmp;
+            break;
+        }
+    }
+    
     // Only update visibility, do not recalculate centering
     m_renderWidget->updatePolygonsVisibility(visiblePolygons);
 }
@@ -260,12 +255,6 @@ void MainWindow::onItemSelectionChanged()
 
 void MainWindow::performBooleanOperation()
 {
-    if (m_polygons.size() < 1) {
-        QMessageBox::warning(this, "Warning", 
-            "At least one model is required to perform boolean operations!");
-        return;
-    }
-    
     // Show boolean operations dialog
     BooleanOpsDialog dialog(m_polygons, this);
     if (dialog.exec() == QDialog::Accepted) {
@@ -303,21 +292,12 @@ void MainWindow::performBooleanOperation()
         // Perform boolean operation with user-specified tolerance
         std::vector<BooleanOps::OpPolygon> results = BooleanOps::performOperation(poly1, poly2, operationType, tolerance);
         
-        if (results.empty()) {
-            QMessageBox::information(this, "Result", 
-                QString("The boolean operation %1%2%3 resulted in an empty polygon")
-                    .arg(m_polygons[firstIdx]->getName())
-                    .arg(opSymbol)
-                    .arg(m_polygons[secondIdx]->getName()));
-            return;
-        }
-        
         // Create new model for each result
         int addedCount = 0;
         for (size_t i = 0; i < results.size(); ++i) {
-            QString resultName = QString("%1_Result_%2").arg(opName).arg(++m_resultCounter);
+            QString resultName = QString("%1%2%3").arg(m_polygons[firstIdx]->getName()).arg(opName).arg(m_polygons[secondIdx]->getName());
             if (results.size() > 1) {
-                resultName += QString("_%1").arg(i + 1);
+                resultName += QString("(%1)").arg(i + 1);
             }
             
             Polygon* resultPolygon = BooleanOps::toQtPolygon(results[i], resultName);
@@ -345,15 +325,7 @@ void MainWindow::performBooleanOperation()
                 visiblePolygons.append(m_polygons[i]);
             }
         }
-        m_renderWidget->setPolygons(visiblePolygons);
+        m_renderWidget->setPolygons(visiblePolygons,false);
         updateToggleAllCheckbox();
-        
-        // Show success message
-        QMessageBox::information(this, "Success", 
-            QString("Boolean operation %1%2%3 completed!\nGenerated %4 result polygons.")
-                .arg(m_polygons[firstIdx]->getName())
-                .arg(opSymbol)
-                .arg(m_polygons[secondIdx]->getName())
-                .arg(addedCount));
     }
 }

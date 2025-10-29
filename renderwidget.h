@@ -12,7 +12,7 @@ class RenderWidget : public QWidget {
 public:
     explicit RenderWidget(QWidget* parent = nullptr);
     
-    void setPolygons(const QVector<Polygon*>& polygons);
+    void setPolygons(const QVector<Polygon*>& polygons,bool isUpdate = true);
     void updatePolygonsVisibility(const QVector<Polygon*>& polygons);
     
 protected:

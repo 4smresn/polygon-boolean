@@ -10,18 +10,20 @@
 RenderWidget::RenderWidget(QWidget* parent)
     : QWidget(parent)
 {
-    setMinimumSize(600, 600);
+    setMinimumSize(1000, 1000);
     setStyleSheet("background-color: white;");
 }
 
-void RenderWidget::setPolygons(const QVector<Polygon*>& polygons)
+void RenderWidget::setPolygons(const QVector<Polygon*>& polygons, bool isUpdate)
 {
     m_polygons = polygons;
-    m_boundsNeedsUpdate = true;
+    m_boundsNeedsUpdate = isUpdate;
     
     // Only recalculate bounds and transform when loading new files
-    m_cachedBounds = calculateBounds();
-    m_cachedTransform = calculateTransform(m_cachedBounds);
+    if(isUpdate){
+        m_cachedBounds = calculateBounds();
+        m_cachedTransform = calculateTransform(m_cachedBounds);
+    }
     
     update();
 }
@@ -129,7 +131,7 @@ void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
         pen.setJoinStyle(Qt::RoundJoin);
         painter.setPen(pen);
         
-        QBrush brush(QColor(255, 215, 0, 200));  // Gold fill
+        QBrush brush(QColor(255, 215, 0));  // Gold fill
         painter.setBrush(brush);
     } else {
         // Normal state: blue edge, light blue fill
@@ -139,7 +141,7 @@ void RenderWidget::drawPolygon(QPainter& painter, const Polygon* polygon)
         pen.setJoinStyle(Qt::RoundJoin);
         painter.setPen(pen);
         
-        QBrush brush(QColor(173, 216, 255, 180));  // Light blue fill with transparency
+        QBrush brush(QColor(173, 216, 255));  // Light blue fill with transparency
         painter.setBrush(brush);
     }
     

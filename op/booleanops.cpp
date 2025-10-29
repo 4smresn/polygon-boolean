@@ -5,7 +5,6 @@
 
 namespace BooleanOps
 {
-
     OpPolygon fromQtPolygon(const Polygon *polygon)
     {
         if (!polygon || !polygon->isValid())
@@ -77,7 +76,6 @@ namespace BooleanOps
         alg.excute();
         return alg.getResult();
     }
-
 }
 
 
